@@ -49,17 +49,27 @@
         // Inicializar Firebase
         const app = firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
-        
+
+        // Referencia a la base de datos
+        let gameRef = database.ref("game");
+
         let countdownElement = document.querySelector('.countdown');
         let gameArea = document.querySelector('.game-area');
         let resultadoElement = document.getElementById('resultado');
-        let gameRef = database.ref("game");
+        let count = 3;  // Empezamos en 3
 
+        // Función para actualizar el temporizador en Firebase
+        function updateCountdown() {
+            gameRef.child('countdown').set(count);
+        }
+
+        // Función para iniciar el contador
         function startCountdown() {
-            let count = 3;
             let interval = setInterval(() => {
                 countdownElement.textContent = count;
                 count--;
+                updateCountdown();  // Actualizamos en Firebase
+
                 if (count < 0) {
                     clearInterval(interval);
                     countdownElement.classList.add('hidden');
@@ -69,23 +79,31 @@
             }, 1000);
         }
 
+        // Función para manejar el temporizador de elección
         function startChoiceTimer() {
             setTimeout(() => {
                 checkResult();
-            }, 1000); // 1 segundo para elegir
+            }, 1000);  // 1 segundo para elegir
         }
 
+        // Función para elegir la dirección
         function chooseDirection(direction, role) {
             gameRef.child(role).set(direction);
         }
 
+        // Escuchar cambios en Firebase para el contador
         gameRef.on("value", (snapshot) => {
             let data = snapshot.val();
+            if (data && data.countdown !== undefined) {
+                count = data.countdown;
+                countdownElement.textContent = count;  // Actualizar el temporizador en la pantalla
+            }
             if (data && data.arquero && data.pateador) {
                 checkResult(data.arquero, data.pateador);
             }
         });
 
+        // Función para chequear el resultado
         function checkResult(arqueroChoice, pateadorChoice) {
             gameArea.classList.add('hidden');
             resultadoElement.classList.remove('hidden');
@@ -96,7 +114,13 @@
             }
         }
 
-        startCountdown();
+        // Iniciar el contador cuando ambos jugadores se conecten
+        gameRef.once("value", (snapshot) => {
+            let data = snapshot.val();
+            if (!data || data.countdown === undefined) {
+                startCountdown();
+            }
+        });
     </script>
 </body>
 </html>
